@@ -259,6 +259,36 @@
       background: #f8d7da;
       color: #721c24;
     }
+
+    .favorite-btn {
+      background: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      margin-left: 10px;
+    }
+
+    .favorite-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .favorite-btn.favorited {
+      background: #fff3cd;
+    }
+
+    .card-content-wrapper {
+      display: flex;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
@@ -299,6 +329,10 @@
         <input type="checkbox" id="katakana-youon">
         片假名拗音
       </label>
+      <label>
+        <input type="checkbox" id="favorites">
+        ⭐ 收藏假名
+      </label>
     </div>
 
     <div class="display-area">
@@ -312,9 +346,12 @@
 
       <div class="card bottom-card" id="bottomCard">
         <div class="card-content">
-          <span class="display-text hidden" id="bottomDisplay">?</span>
-          <span class="placeholder" id="bottomPlaceholder">等待显示...</span>
-          <button id="bottomSpeaker" class="speaker-btn" style="display: none;">🔊</button>
+          <div class="card-content-wrapper">
+            <span class="display-text hidden" id="bottomDisplay">?</span>
+            <span class="placeholder" id="bottomPlaceholder">等待显示...</span>
+            <button id="bottomSpeaker" class="speaker-btn" style="display: none;">🔊</button>
+            <button id="favoriteBtn" class="favorite-btn" style="display: none;">☆</button>
+          </div>
         </div>
       </div>
     </div>
@@ -410,6 +447,34 @@
     let elapsedTime = 0
     let selectedVoice = null
 
+    const FAVORITES_KEY = 'kanaFavorites'
+
+    function getFavorites() {
+      const stored = localStorage.getItem(FAVORITES_KEY)
+      return stored ? JSON.parse(stored) : []
+    }
+
+    function saveFavorites(favorites) {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites))
+    }
+
+    function isFavorited(item) {
+      const favorites = getFavorites()
+      return favorites.some(f => f.romaji === item.romaji && f.kana === item.kana)
+    }
+
+    function toggleFavorite(item) {
+      const favorites = getFavorites()
+      const index = favorites.findIndex(f => f.romaji === item.romaji && f.kana === item.kana)
+      if (index > -1) {
+        favorites.splice(index, 1)
+      } else {
+        favorites.push({ romaji: item.romaji, kana: item.kana })
+      }
+      saveFavorites(favorites)
+      return index === -1
+    }
+
     const elements = {
       voiceStatus: document.getElementById('voiceStatus'),
       timer: document.getElementById('timer'),
@@ -421,6 +486,7 @@
       bottomDisplay: document.getElementById('bottomDisplay'),
       bottomPlaceholder: document.getElementById('bottomPlaceholder'),
       bottomSpeaker: document.getElementById('bottomSpeaker'),
+      favoriteBtn: document.getElementById('favoriteBtn'),
       startBtn: document.getElementById('startBtn'),
       answerBtn: document.getElementById('answerBtn'),
       nextBtn: document.getElementById('nextBtn'),
@@ -428,6 +494,8 @@
       progressText: document.getElementById('progressText'),
       progressFill: document.getElementById('progressFill')
     }
+
+    console.log('favoriteBtn element:', elements.favoriteBtn)
 
     function checkSpeechAPI() {
       if ('speechSynthesis' in window) {
@@ -539,7 +607,12 @@
 
       currentData = []
       for (const category of selectedCategories) {
-        if (kanaData[category]) {
+        if (category === 'favorites') {
+          const favorites = getFavorites()
+          if (favorites.length > 0) {
+            currentData.push(...favorites)
+          }
+        } else if (kanaData[category]) {
           currentData.push(...kanaData[category])
         }
       }
@@ -552,6 +625,8 @@
         elements.startBtn.textContent = '重新开始'
         elements.progressArea.style.display = 'block'
         updateProgress()
+      } else {
+        alert('请选择至少一个假名类型或添加收藏')
       }
     }
 
@@ -580,6 +655,7 @@
       elements.bottomPlaceholder.style.display = 'none'
       elements.bottomDisplay.style.display = 'block'
       elements.bottomSpeaker.style.display = 'none'
+      elements.favoriteBtn.style.display = 'none'
 
       elements.bottomCard.className = 'card bottom-card'
       elements.answerBtn.disabled = false
@@ -604,12 +680,27 @@
       }
       
       elements.bottomCard.className = 'card bottom-card revealed'
+      console.log('Before showing favorite button')
+      console.log('favoriteBtn:', elements.favoriteBtn)
+      elements.favoriteBtn.style.display = 'flex'
+      console.log('After setting display to flex')
+      updateFavoriteBtn(item)
 
       stopTimer()
       speak(item.kana)
 
       elements.answerBtn.disabled = true
       elements.nextBtn.disabled = false
+    }
+
+    function updateFavoriteBtn(item) {
+      if (isFavorited(item)) {
+        elements.favoriteBtn.textContent = '⭐'
+        elements.favoriteBtn.classList.add('favorited')
+      } else {
+        elements.favoriteBtn.textContent = '☆'
+        elements.favoriteBtn.classList.remove('favorited')
+      }
     }
 
     function nextQuestion() {
@@ -641,6 +732,13 @@
     elements.bottomSpeaker.addEventListener('click', () => {
       if (currentData[currentIndex]) {
         speak(currentData[currentIndex].kana)
+      }
+    })
+    elements.favoriteBtn.addEventListener('click', () => {
+      if (currentData[currentIndex]) {
+        const item = currentData[currentIndex]
+        toggleFavorite(item)
+        updateFavoriteBtn(item)
       }
     })
 
