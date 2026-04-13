@@ -1,7 +1,7 @@
 # JapaneseKanaPractice
 一个日语五十音练习页面
 
-
+![首页图片]([JapaneseKanaPractice/souye.png at main · normantest1/JapaneseKanaPractice](https://github.com/normantest1/JapaneseKanaPractice/blob/main/souye.png))
 
 ### 如何使用
 
