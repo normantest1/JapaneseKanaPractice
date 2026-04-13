@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日语五十音练习 - Web Speech</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .timer {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-size: 24px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      color: #667eea;
+      font-size: 32px;
+      margin: 0;
+    }
+
+    .category-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+
+    .category-selector label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 5px;
+      transition: background 0.2s;
+    }
+
+    .category-selector label:hover {
+      background: #e9ecef;
+    }
+
+    .category-selector input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .display-area {
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border-radius: 15px;
+      padding: 40px;
+      margin-bottom: 20px;
+      min-height: 120px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 10px 30px rgba(240, 147, 251, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .card.top-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .card.bottom-card {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .card.bottom-card.revealed {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      box-shadow: 0 10px 30px rgba(79, 172, 254, 0.3);
+    }
+
+    .card-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      width: 100%;
+    }
+
+    .display-text {
+      font-size: 64px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .display-text.hidden {
+      filter: blur(10px);
+      user-select: none;
+    }
+
+    .placeholder {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 24px;
+    }
+
+    .speaker-btn {
+      background: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .speaker-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 15px 30px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: bold;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .btn-answer {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+    }
+
+    .btn-answer:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(240, 147, 251, 0.6);
+    }
+
+    .btn-next {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    }
+
+    .btn-next:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+    }
+
+    .progress {
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s ease;
+    }
+
+    .voice-status {
+      text-align: center;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .voice-status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .voice-status.warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .voice-status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="voice-status" id="voiceStatus">检测语音引擎...</div>
+
+    <div class="timer" id="timer" style="display: none;">
+      <span>⏱</span>
+      <span id="timerValue">00:00</span>
+    </div>
+
+    <div class="header">
+      <h1>📚 日语五十音练习 (Web Speech)</h1>
+    </div>
+
+    <div class="category-selector">
+      <label>
+        <input type="checkbox" id="hiragana-seion" checked>
+        平假名清音
+      </label>
+      <label>
+        <input type="checkbox" id="katakana-seion">
+        片假名清音
+      </label>
+      <label>
+        <input type="checkbox" id="hiragana-dakuten">
+        平假名浊音/半浊音
+      </label>
+      <label>
+        <input type="checkbox" id="katakana-dakuten">
+        片假名浊音/半浊音
+      </label>
+      <label>
+        <input type="checkbox" id="hiragana-youon">
+        平假名拗音
+      </label>
+      <label>
+        <input type="checkbox" id="katakana-youon">
+        片假名拗音
+      </label>
+    </div>
+
+    <div class="display-area">
+      <div class="card top-card">
+        <div class="card-content">
+          <span class="display-text" id="topDisplay"></span>
+          <span class="placeholder" id="topPlaceholder">请选择至少一个假名类型</span>
+          <button id="topSpeaker" class="speaker-btn" style="display: none;">🔊</button>
+        </div>
+      </div>
+
+      <div class="card bottom-card" id="bottomCard">
+        <div class="card-content">
+          <span class="display-text hidden" id="bottomDisplay">?</span>
+          <span class="placeholder" id="bottomPlaceholder">等待显示...</span>
+          <button id="bottomSpeaker" class="speaker-btn" style="display: none;">🔊</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="startBtn">开始练习</button>
+      <button class="btn btn-answer" id="answerBtn" disabled>答案</button>
+      <button class="btn btn-next" id="nextBtn" disabled>下一题</button>
+    </div>
+
+    <div class="progress" id="progressArea" style="display: none;">
+      <span id="progressText">进度: 0 / 0</span>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const kanaData = {
+      'hiragana-seion': [
+        {romaji: 'a', kana: 'あ'}, {romaji: 'i', kana: 'い'}, {romaji: 'u', kana: 'う'}, {romaji: 'e', kana: 'え'}, {romaji: 'o', kana: 'お'},
+        {romaji: 'ka', kana: 'か'}, {romaji: 'ki', kana: 'き'}, {romaji: 'ku', kana: 'く'}, {romaji: 'ke', kana: 'け'}, {romaji: 'ko', kana: 'こ'},
+        {romaji: 'sa', kana: 'さ'}, {romaji: 'shi', kana: 'し'}, {romaji: 'su', kana: 'す'}, {romaji: 'se', kana: 'せ'}, {romaji: 'so', kana: 'そ'},
+        {romaji: 'ta', kana: 'た'}, {romaji: 'chi', kana: 'ち'}, {romaji: 'tsu', kana: 'つ'}, {romaji: 'te', kana: 'て'}, {romaji: 'to', kana: 'と'},
+        {romaji: 'na', kana: 'な'}, {romaji: 'ni', kana: 'に'}, {romaji: 'nu', kana: 'ぬ'}, {romaji: 'ne', kana: 'ね'}, {romaji: 'no', kana: 'の'},
+        {romaji: 'ha', kana: 'は'}, {romaji: 'hi', kana: 'ひ'}, {romaji: 'fu', kana: 'ふ'}, {romaji: 'he', kana: 'へ'}, {romaji: 'ho', kana: 'ほ'},
+        {romaji: 'ma', kana: 'ま'}, {romaji: 'mi', kana: 'み'}, {romaji: 'mu', kana: 'む'}, {romaji: 'me', kana: 'め'}, {romaji: 'mo', kana: 'も'},
+        {romaji: 'ya', kana: 'や'}, {romaji: 'yu', kana: 'ゆ'}, {romaji: 'yo', kana: 'よ'},
+        {romaji: 'ra', kana: 'ら'}, {romaji: 'ri', kana: 'り'}, {romaji: 'ru', kana: 'る'}, {romaji: 're', kana: 'れ'}, {romaji: 'ro', kana: 'ろ'},
+        {romaji: 'wa', kana: 'わ'}, {romaji: 'wo', kana: 'を'}, {romaji: 'n', kana: 'ん'}
+      ],
+      'katakana-seion': [
+        {romaji: 'a', kana: 'ア'}, {romaji: 'i', kana: 'イ'}, {romaji: 'u', kana: 'ウ'}, {romaji: 'e', kana: 'エ'}, {romaji: 'o', kana: 'オ'},
+        {romaji: 'ka', kana: 'カ'}, {romaji: 'ki', kana: 'キ'}, {romaji: 'ku', kana: 'ク'}, {romaji: 'ke', kana: 'ケ'}, {romaji: 'ko', kana: 'コ'},
+        {romaji: 'sa', kana: 'サ'}, {romaji: 'shi', kana: 'シ'}, {romaji: 'su', kana: 'ス'}, {romaji: 'se', kana: 'セ'}, {romaji: 'so', kana: 'ソ'},
+        {romaji: 'ta', kana: 'タ'}, {romaji: 'chi', kana: 'チ'}, {romaji: 'tsu', kana: 'ツ'}, {romaji: 'te', kana: 'テ'}, {romaji: 'to', kana: 'ト'},
+        {romaji: 'na', kana: 'ナ'}, {romaji: 'ni', kana: 'ニ'}, {romaji: 'nu', kana: 'ヌ'}, {romaji: 'ne', kana: 'ネ'}, {romaji: 'no', kana: 'ノ'},
+        {romaji: 'ha', kana: 'ハ'}, {romaji: 'hi', kana: 'ヒ'}, {romaji: 'fu', kana: 'フ'}, {romaji: 'he', kana: 'ヘ'}, {romaji: 'ho', kana: 'ホ'},
+        {romaji: 'ma', kana: 'マ'}, {romaji: 'mi', kana: 'ミ'}, {romaji: 'mu', kana: 'ム'}, {romaji: 'me', kana: 'メ'}, {romaji: 'mo', kana: 'モ'},
+        {romaji: 'ya', kana: 'ヤ'}, {romaji: 'yu', kana: 'ユ'}, {romaji: 'yo', kana: 'ヨ'},
+        {romaji: 'ra', kana: 'ラ'}, {romaji: 'ri', kana: 'リ'}, {romaji: 'ru', kana: 'ル'}, {romaji: 're', kana: 'レ'}, {romaji: 'ro', kana: 'ロ'},
+        {romaji: 'wa', kana: 'ワ'}, {romaji: 'wo', kana: 'ヲ'}, {romaji: 'n', kana: 'ン'}
+      ],
+      'hiragana-dakuten': [
+        {romaji: 'ga', kana: 'が'}, {romaji: 'gi', kana: 'ぎ'}, {romaji: 'gu', kana: 'ぐ'}, {romaji: 'ge', kana: 'げ'}, {romaji: 'go', kana: 'ご'},
+        {romaji: 'za', kana: 'ざ'}, {romaji: 'ji', kana: 'じ'}, {romaji: 'zu', kana: 'ず'}, {romaji: 'ze', kana: 'ぜ'}, {romaji: 'zo', kana: 'ぞ'},
+        {romaji: 'da', kana: 'だ'}, {romaji: 'di', kana: 'ぢ'}, {romaji: 'du', kana: 'づ'}, {romaji: 'de', kana: 'で'}, {romaji: 'do', kana: 'ど'},
+        {romaji: 'ba', kana: 'ば'}, {romaji: 'bi', kana: 'び'}, {romaji: 'bu', kana: 'ぶ'}, {romaji: 'be', kana: 'べ'}, {romaji: 'bo', kana: 'ぼ'},
+        {romaji: 'pa', kana: 'ぱ'}, {romaji: 'pi', kana: 'ぴ'}, {romaji: 'pu', kana: 'ぷ'}, {romaji: 'pe', kana: 'ぺ'}, {romaji: 'po', kana: 'ぽ'}
+      ],
+      'katakana-dakuten': [
+        {romaji: 'ga', kana: 'ガ'}, {romaji: 'gi', kana: 'ギ'}, {romaji: 'gu', kana: 'グ'}, {romaji: 'ge', kana: 'ゲ'}, {romaji: 'go', kana: 'ゴ'},
+        {romaji: 'za', kana: 'ザ'}, {romaji: 'ji', kana: 'ジ'}, {romaji: 'zu', kana: 'ズ'}, {romaji: 'ze', kana: 'ゼ'}, {romaji: 'zo', kana: 'ゾ'},
+        {romaji: 'da', kana: 'ダ'}, {romaji: 'di', kana: 'ヂ'}, {romaji: 'du', kana: 'ヅ'}, {romaji: 'de', kana: 'デ'}, {romaji: 'do', kana: 'ド'},
+        {romaji: 'ba', kana: 'バ'}, {romaji: 'bi', kana: 'ビ'}, {romaji: 'bu', kana: 'ブ'}, {romaji: 'be', kana: 'ベ'}, {romaji: 'bo', kana: 'ボ'},
+        {romaji: 'pa', kana: 'パ'}, {romaji: 'pi', kana: 'ピ'}, {romaji: 'pu', kana: 'プ'}, {romaji: 'pe', kana: 'ペ'}, {romaji: 'po', kana: 'ポ'}
+      ],
+      'hiragana-youon': [
+        {romaji: 'kya', kana: 'きゃ'}, {romaji: 'kyu', kana: 'きゅ'}, {romaji: 'kyo', kana: 'きょ'},
+        {romaji: 'sha', kana: 'しゃ'}, {romaji: 'shu', kana: 'しゅ'}, {romaji: 'sho', kana: 'しょ'},
+        {romaji: 'cha', kana: 'ちゃ'}, {romaji: 'chu', kana: 'ちゅ'}, {romaji: 'cho', kana: 'ちょ'},
+        {romaji: 'nya', kana: 'にゃ'}, {romaji: 'nyu', kana: 'にゅ'}, {romaji: 'nyo', kana: 'にょ'},
+        {romaji: 'hya', kana: 'ひゃ'}, {romaji: 'hyu', kana: 'ひゅ'}, {romaji: 'hyo', kana: 'ひょ'},
+        {romaji: 'mya', kana: 'みゃ'}, {romaji: 'myu', kana: 'みゅ'}, {romaji: 'myo', kana: 'みょ'},
+        {romaji: 'rya', kana: 'りゃ'}, {romaji: 'ryu', kana: 'りゅ'}, {romaji: 'ryo', kana: 'りょ'},
+        {romaji: 'gya', kana: 'ぎゃ'}, {romaji: 'gyu', kana: 'ぎゅ'}, {romaji: 'gyo', kana: 'ぎょ'},
+        {romaji: 'ja', kana: 'じゃ'}, {romaji: 'ju', kana: 'じゅ'}, {romaji: 'jo', kana: 'じょ'},
+        {romaji: 'dya', kana: 'ぢゃ'}, {romaji: 'dyu', kana: 'ぢゅ'}, {romaji: 'dyo', kana: 'ぢょ'},
+        {romaji: 'bya', kana: 'びゃ'}, {romaji: 'byu', kana: 'びゅ'}, {romaji: 'byo', kana: 'びょ'},
+        {romaji: 'pya', kana: 'ぴゃ'}, {romaji: 'pyu', kana: 'ぴゅ'}, {romaji: 'pyo', kana: 'ぴょ'}
+      ],
+      'katakana-youon': [
+        {romaji: 'kya', kana: 'キャ'}, {romaji: 'kyu', kana: 'キュ'}, {romaji: 'kyo', kana: 'キョ'},
+        {romaji: 'sha', kana: 'シャ'}, {romaji: 'shu', kana: 'シュ'}, {romaji: 'sho', kana: 'ショ'},
+        {romaji: 'cha', kana: 'チャ'}, {romaji: 'chu', kana: 'チュ'}, {romaji: 'cho', kana: 'チョ'},
+        {romaji: 'nya', kana: 'ニャ'}, {romaji: 'nyu', kana: 'ニュ'}, {romaji: 'nyo', kana: 'ニョ'},
+        {romaji: 'hya', kana: 'ヒャ'}, {romaji: 'hyu', kana: 'ヒュ'}, {romaji: 'hyo', kana: 'ヒョ'},
+        {romaji: 'mya', kana: 'ミャ'}, {romaji: 'myu', kana: 'ミュ'}, {romaji: 'myo', kana: 'ミョ'},
+        {romaji: 'rya', kana: 'リャ'}, {romaji: 'ryu', kana: 'リュ'}, {romaji: 'ryo', kana: 'リョ'},
+        {romaji: 'gya', kana: 'ギャ'}, {romaji: 'gyu', kana: 'ギュ'}, {romaji: 'gyo', kana: 'ギョ'},
+        {romaji: 'ja', kana: 'ジャ'}, {romaji: 'ju', kana: 'ジュ'}, {romaji: 'jo', kana: 'ジョ'},
+        {romaji: 'dya', kana: 'ヂャ'}, {romaji: 'dyu', kana: 'ヂュ'}, {romaji: 'dyo', kana: 'ヂョ'},
+        {romaji: 'bya', kana: 'ビャ'}, {romaji: 'byu', kana: 'ビュ'}, {romaji: 'byo', kana: 'ビョ'},
+        {romaji: 'pya', kana: 'ピャ'}, {romaji: 'pyu', kana: 'ピュ'}, {romaji: 'pyo', kana: 'ピョ'}
+      ]
+    }
+
+    let currentData = []
+    let currentIndex = 0
+    let showTop = true
+    let timerInterval = null
+    let elapsedTime = 0
+    let selectedVoice = null
+
+    const elements = {
+      voiceStatus: document.getElementById('voiceStatus'),
+      timer: document.getElementById('timer'),
+      timerValue: document.getElementById('timerValue'),
+      topDisplay: document.getElementById('topDisplay'),
+      topPlaceholder: document.getElementById('topPlaceholder'),
+      topSpeaker: document.getElementById('topSpeaker'),
+      bottomCard: document.getElementById('bottomCard'),
+      bottomDisplay: document.getElementById('bottomDisplay'),
+      bottomPlaceholder: document.getElementById('bottomPlaceholder'),
+      bottomSpeaker: document.getElementById('bottomSpeaker'),
+      startBtn: document.getElementById('startBtn'),
+      answerBtn: document.getElementById('answerBtn'),
+      nextBtn: document.getElementById('nextBtn'),
+      progressArea: document.getElementById('progressArea'),
+      progressText: document.getElementById('progressText'),
+      progressFill: document.getElementById('progressFill')
+    }
+
+    function checkSpeechAPI() {
+      if ('speechSynthesis' in window) {
+        loadVoices()
+        return true
+      } else {
+        elements.voiceStatus.className = 'voice-status error'
+        elements.voiceStatus.textContent = '❌ 浏览器不支持 Web Speech API'
+        return false
+      }
+    }
+
+    function loadVoices() {
+      function displayVoices() {
+        const voices = speechSynthesis.getVoices()
+        const japaneseVoices = voices.filter(v => 
+          v.lang && (v.lang.startsWith('ja') || v.lang.includes('ja'))
+        )
+
+        if (japaneseVoices.length > 0) {
+          selectedVoice = japaneseVoices[0]
+          elements.voiceStatus.className = 'voice-status success'
+          elements.voiceStatus.textContent = `✅ 找到日语语音: ${selectedVoice.name}`
+        } else {
+          elements.voiceStatus.className = 'voice-status warning'
+          elements.voiceStatus.textContent = '⚠️ 未找到日语语音，将使用默认语音'
+        }
+      }
+
+      if (speechSynthesis.getVoices().length > 0) {
+        displayVoices()
+      } else {
+        speechSynthesis.onvoiceschanged = displayVoices
+        setTimeout(displayVoices, 1000)
+      }
+    }
+
+    function speak(text) {
+      if (!('speechSynthesis' in window)) {
+        alert('浏览器不支持语音合成')
+        return
+      }
+
+      speechSynthesis.cancel()
+
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = 'ja-JP'
+      utterance.rate = 1.0
+      utterance.volume = 1.0
+
+      if (selectedVoice) {
+        utterance.voice = selectedVoice
+      }
+
+      speechSynthesis.speak(utterance)
+    }
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60)
+      const secs = seconds % 60
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
+
+    function startTimer() {
+      elements.timer.style.display = 'flex'
+      elapsedTime = 0
+      elements.timerValue.textContent = formatTime(elapsedTime)
+      timerInterval = setInterval(() => {
+        elapsedTime++
+        elements.timerValue.textContent = formatTime(elapsedTime)
+      }, 1000)
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval)
+        timerInterval = null
+      }
+    }
+
+    function shuffleArray(array) {
+      const shuffled = [...array]
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+      }
+      return shuffled
+    }
+
+    function getSelectedCategories() {
+      const categories = []
+      const checkboxes = document.querySelectorAll('.category-selector input[type="checkbox"]')
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          categories.push(cb.id)
+        }
+      })
+      return categories
+    }
+
+    function loadData() {
+      stopTimer()
+      const selectedCategories = getSelectedCategories()
+      
+      if (selectedCategories.length === 0) {
+        alert('请选择至少一个假名类型')
+        return
+      }
+
+      currentData = []
+      for (const category of selectedCategories) {
+        if (kanaData[category]) {
+          currentData.push(...kanaData[category])
+        }
+      }
+
+      if (currentData.length > 0) {
+        currentData = shuffleArray(currentData)
+        currentIndex = 0
+        displayCurrent()
+        startTimer()
+        elements.startBtn.textContent = '重新开始'
+        elements.progressArea.style.display = 'block'
+        updateProgress()
+      }
+    }
+
+    function displayCurrent() {
+      if (currentData.length === 0 || currentIndex >= currentData.length) {
+        return
+      }
+
+      const item = currentData[currentIndex]
+      showTop = Math.random() > 0.5
+
+      if (showTop) {
+        elements.topDisplay.textContent = item.romaji
+        elements.bottomDisplay.textContent = '?'
+        elements.bottomDisplay.className = 'display-text hidden'
+      } else {
+        elements.topDisplay.textContent = item.kana
+        elements.bottomDisplay.textContent = '?'
+        elements.bottomDisplay.className = 'display-text hidden'
+      }
+
+      elements.topPlaceholder.style.display = 'none'
+      elements.topDisplay.style.display = 'block'
+      elements.topSpeaker.style.display = 'none'
+
+      elements.bottomPlaceholder.style.display = 'none'
+      elements.bottomDisplay.style.display = 'block'
+      elements.bottomSpeaker.style.display = 'none'
+
+      elements.bottomCard.className = 'card bottom-card'
+      elements.answerBtn.disabled = false
+      elements.nextBtn.disabled = true
+    }
+
+    function revealAnswer() {
+      if (currentData.length === 0 || currentIndex >= currentData.length) {
+        return
+      }
+
+      const item = currentData[currentIndex]
+      
+      if (showTop) {
+        elements.bottomDisplay.textContent = item.kana
+        elements.bottomDisplay.className = 'display-text'
+        elements.bottomSpeaker.style.display = 'flex'
+      } else {
+        elements.bottomDisplay.textContent = item.romaji
+        elements.bottomDisplay.className = 'display-text'
+        elements.topSpeaker.style.display = 'flex'
+      }
+      
+      elements.bottomCard.className = 'card bottom-card revealed'
+
+      stopTimer()
+      speak(item.kana)
+
+      elements.answerBtn.disabled = true
+      elements.nextBtn.disabled = false
+    }
+
+    function nextQuestion() {
+      if (currentIndex < currentData.length - 1) {
+        currentIndex++
+        displayCurrent()
+        startTimer()
+        updateProgress()
+      } else {
+        alert('恭喜！你已完成所有练习！')
+        loadData()
+      }
+    }
+
+    function updateProgress() {
+      elements.progressText.textContent = `进度: ${currentIndex + 1} / ${currentData.length}`
+      const percentage = ((currentIndex + 1) / currentData.length) * 100
+      elements.progressFill.style.width = percentage + '%'
+    }
+
+    elements.startBtn.addEventListener('click', loadData)
+    elements.answerBtn.addEventListener('click', revealAnswer)
+    elements.nextBtn.addEventListener('click', nextQuestion)
+    elements.topSpeaker.addEventListener('click', () => {
+      if (currentData[currentIndex]) {
+        speak(currentData[currentIndex].kana)
+      }
+    })
+    elements.bottomSpeaker.addEventListener('click', () => {
+      if (currentData[currentIndex]) {
+        speak(currentData[currentIndex].kana)
+      }
+    })
+
+    checkSpeechAPI()
+  </script>
+</body>
+</html>
